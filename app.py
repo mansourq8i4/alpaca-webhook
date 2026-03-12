@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import alpaca_trade_api as tradeapi
 import os
+import threading
 
 app = Flask(__name__)
 
@@ -10,31 +11,38 @@ BASE_URL = 'https://paper-api.alpaca.markets'
 
 api = tradeapi.REST(API_KEY, SECRET_KEY, BASE_URL)
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    data = request.json
-    if not data:
-        return jsonify({'error': 'No data'}), 400
-    
-    symbol = data.get('symbol')
-    side = data.get('side')
-    qty = data.get('qty', '1')
-    
+def execute_order(symbol, side, qty):
     try:
-        order = api.submit_order(
+        api.submit_order(
             symbol=symbol,
             qty=qty,
             side=side,
             type='market',
             time_in_force='gtc'
         )
-        return jsonify({'status': 'success', 'order_id': order.id}), 200
+        print(f"Order: {side} {qty} {symbol}")
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error: {str(e)}")
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    data = request.json
+    if not data:
+        return jsonify({'status': 'ok'}), 200
+    
+    symbol = data.get('symbol', '')
+    side = data.get('side', '')
+    qty = data.get('qty', '1')
+    
+    # رد فوري ثم نفذ الأمر في الخلفية
+    thread = threading.Thread(target=execute_order, args=(symbol, side, qty))
+    thread.start()
+    
+    return jsonify({'status': 'ok'}), 200
 
 @app.route('/')
 def home():
-    return "Webhook Server Running"
+    return "Running", 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
