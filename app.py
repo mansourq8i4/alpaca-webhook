@@ -11,16 +11,16 @@ BASE_URL = 'https://paper-api.alpaca.markets'
 
 api = tradeapi.REST(API_KEY, SECRET_KEY, BASE_URL)
 
-def execute_order(symbol, side, qty):
+def execute_order(symbol, side, notional):
     try:
         api.submit_order(
             symbol=symbol,
-            qty=qty,
+            notional=notional,
             side=side,
             type='market',
-            time_in_force='gtc'
+            time_in_force='ioc'
         )
-        print(f"Order: {side} {qty} {symbol}")
+        print(f"Order: {side} ${notional} {symbol}")
     except Exception as e:
         print(f"Error: {str(e)}")
 
@@ -29,15 +29,14 @@ def webhook():
     data = request.json
     if not data:
         return jsonify({'status': 'ok'}), 200
-    
+
     symbol = data.get('symbol', '')
     side = data.get('side', '')
-    qty = data.get('qty', '1')
-    
-    # رد فوري ثم نفذ الأمر في الخلفية
-    thread = threading.Thread(target=execute_order, args=(symbol, side, qty))
+    notional = float(data.get('notional', 450))
+
+    thread = threading.Thread(target=execute_order, args=(symbol, side, notional))
     thread.start()
-    
+
     return jsonify({'status': 'ok'}), 200
 
 @app.route('/')
