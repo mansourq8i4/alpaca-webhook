@@ -13,6 +13,17 @@ api = tradeapi.REST(API_KEY, SECRET_KEY, BASE_URL)
 
 def execute_order(symbol, side, notional):
     try:
+        if side == 'sell':
+            # تحقق هل عندك رصيد قبل البيع
+            try:
+                position = api.get_position(symbol)
+                if float(position.qty) <= 0:
+                    print(f"No position for {symbol}, skipping sell")
+                    return
+            except:
+                print(f"No position for {symbol}, skipping sell")
+                return
+
         api.submit_order(
             symbol=symbol,
             notional=notional,
